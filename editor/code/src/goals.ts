@@ -14,7 +14,7 @@ import {
 } from "vscode-languageclient";
 import { GoalRequest, GoalAnswer, PpString } from "../lib/types";
 
-const infoReq = new RequestType<GoalRequest, GoalAnswer<PpString>, void>(
+export const infoReq = new RequestType<GoalRequest, GoalAnswer<PpString>, void>(
   "proof/goals"
 );
 

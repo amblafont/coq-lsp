@@ -32,7 +32,7 @@ import { FileProgressManager } from "./progress";
 import { coqPerfData, PerfDataView } from "./perf";
 
 let config: CoqLspClientConfig;
-let client: BaseLanguageClient;
+export let client: BaseLanguageClient;
 
 // Lifetime of the info panel == extension lifetime.
 let infoPanel: InfoPanel;

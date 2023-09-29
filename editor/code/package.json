@@ -98,6 +98,14 @@
       {
         "command": "coq-lsp.save",
         "title": "Coq LSP: Save .vo file for the current buffer"
+      },
+      {
+        "command": "coq-lsp.loadGraph",
+        "title": "Load graph"
+      },
+      {
+        "command": "coq-lsp.loadEquation",
+        "title": "Load equation"
       }
     ],
     "keybindings": [
