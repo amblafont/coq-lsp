@@ -108,6 +108,18 @@ type approx =
   (* If no match, return prev *)
   | Prev
 
+(* Helper *)
+let in_state ~st ~f node =
+  match Coq.State.in_state ~st ~f node with
+  | { r = Coq.Protect.R.Completed (Result.Ok res); feedback } ->
+    Io.Log.feedback feedback;
+    res
+  | { r = Coq.Protect.R.Completed (Result.Error _) | Coq.Protect.R.Interrupted
+    ; feedback
+    } ->
+    Io.Log.feedback feedback;
+    None
+
 module type S = sig
   module P : Point
 
@@ -116,12 +128,9 @@ module type S = sig
   val node : (approx, Doc.Node.t) query
   val range : (approx, Lang.Range.t) query
   val ast : (approx, Doc.Node.Ast.t) query
-  val goals : (approx, Pp.t Coq.Goals.reified_pp) query
-  val program : (approx, Declare.OblState.View.t Names.Id.Map.t) query
   val messages : (approx, Doc.Node.Message.t list) query
   val info : (approx, Doc.Node.Info.t) query
   val completion : (string, string list) query
-  val in_state : st:Coq.State.t -> f:('a -> 'b option) -> 'a -> 'b option
 end
 
 let some x = Some x
@@ -148,20 +157,6 @@ module Make (P : Point) : S with module P := P = struct
 
   let node = find
 
-  let pr_goal st =
-    let ppx env sigma x =
-      let { Coq.Protect.E.r; feedback } =
-        Coq.Print.pr_letype_env ~goal_concl_style:true env sigma x
-      in
-      Io.Log.feedback feedback;
-      match r with
-      | Coq.Protect.R.Completed (Ok pr) -> pr
-      | Coq.Protect.R.Completed (Error _pr) -> Pp.str "printer failed!"
-      | Interrupted -> Pp.str "printer interrupted!"
-    in
-    let lemmas = Coq.State.lemmas ~st in
-    Option.map (Coq.Goals.reify ~ppx) lemmas
-
   let range ~doc ~point approx =
     let node = find ~doc ~point approx in
     Option.map Doc.Node.range node
@@ -169,29 +164,6 @@ module Make (P : Point) : S with module P := P = struct
   let ast ~doc ~point approx =
     let node = find ~doc ~point approx in
     Option.bind node Doc.Node.ast
-
-  let in_state ~st ~f node =
-    match Coq.State.in_state ~st ~f node with
-    | { r = Coq.Protect.R.Completed (Result.Ok res); feedback } ->
-      Io.Log.feedback feedback;
-      res
-    | { r = Coq.Protect.R.Completed (Result.Error _) | Coq.Protect.R.Interrupted
-      ; feedback
-      } ->
-      Io.Log.feedback feedback;
-      None
-
-  let goals ~doc ~point approx =
-    find ~doc ~point approx
-    |> obind (fun node ->
-           let st = node.Doc.Node.state in
-           in_state ~st ~f:pr_goal st)
-
-  let program ~doc ~point approx =
-    find ~doc ~point approx
-    |> Option.map (fun node ->
-           let st = node.Doc.Node.state in
-           Coq.State.program ~st)
 
   let messages ~doc ~point approx =
     find ~doc ~point approx |> Option.map Doc.Node.messages
@@ -222,3 +194,26 @@ end
 
 module LC = Make (LineCol)
 module O = Make (Offset)
+
+module Goals = struct
+  let pr_goal st =
+    let ppx env sigma x =
+      let { Coq.Protect.E.r; feedback } =
+        Coq.Print.pr_letype_env ~goal_concl_style:true env sigma x
+      in
+      Io.Log.feedback feedback;
+      match r with
+      | Coq.Protect.R.Completed (Ok pr) -> pr
+      | Coq.Protect.R.Completed (Error _pr) -> Pp.str "printer failed!"
+      | Interrupted -> Pp.str "printer interrupted!"
+    in
+    let lemmas = Coq.State.lemmas ~st in
+    Option.map (Coq.Goals.reify ~ppx) lemmas
+
+  let goals ~st =
+    (* We need to use in_state due to printing not being pure, but we want a
+       different design here *)
+    in_state ~st ~f:pr_goal st
+
+  let program ~st = Coq.State.program ~st
+end

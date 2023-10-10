@@ -36,6 +36,9 @@
  - New lexical qed detection error recovery rule; this makes a very
    large usability difference in practice when editing inside proofs.
    (@ejgallego, #567, fixes #33)
+ - New `pretac` field for preprocessing of goals with a tactic using
+   speculative execution, this is experimental for now (@amblafont,
+   @ejgallego, #573, helps with #558)
 
 # coq-lsp 0.1.7: Just-in-time
 -----------------------------
